@@ -1,0 +1,25 @@
+﻿// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSGrayscaleMask
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+RWTexture2D<float4> Result;
+Texture2D<float4> SrcTexture;
+
+float4 MaskPos;
+float MaskRadius;
+
+float GetMask(int2 maskPos, int2 pixelPos, float maskRadius)
+{
+    float2 maskVec = (float2) maskPos - (float2)pixelPos;
+    return smoothstep(0, 1, maskRadius - length(maskVec));
+}
+
+[numthreads(8,8,1)]
+void CSGrayscaleMask(uint3 id : SV_DispatchThreadID)
+{
+    float mask = GetMask(MaskPos.xy, id.xy, MaskRadius);
+    float4 srcColor = SrcTexture[id.xy];
+    float4 grayscaleColor = (srcColor.r + srcColor.g + srcColor.b) / 3.0;
+    Result[id.xy] = lerp(grayscaleColor, srcColor, mask);
+}

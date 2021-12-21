@@ -1,0 +1,27 @@
+﻿// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSBloom
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+RWTexture2D<float4> Result;
+Texture2D<float4> srcTexture;
+
+float4 Tint;
+float ColorExpose;
+float4 MaskPos;
+float MaskRadius;
+
+float IsMasked(int2 maskPos, int2 pixelPos, float maskRadius)
+{
+    int2 maskVec = pixelPos - maskPos;
+    return smoothstep(0, 1, maskRadius - (float)length(maskVec));
+}
+
+[numthreads(8,8,1)]
+void CSBloom (uint3 id : SV_DispatchThreadID)
+{
+    float mask = IsMasked(MaskPos.xy, id.xy, MaskRadius);
+    float4 srcColor = srcTexture[id.xy];
+    float4 grayscaleColor = (srcColor.r + srcColor.g + srcColor.b) / 3.0;
+    Result[id.xy] = lerp(grayscaleColor, srcColor, mask);
+}

@@ -1,0 +1,64 @@
+﻿// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSScreenHorizontalColorOverlay
+#pragma kernel CSScreenVerticalColorOverlay
+#pragma kernel CSScreenDiagonalColorOverlay
+#pragma kernel CSScreenRadialColorOverlay
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+Texture2D<float4> SrcTexture;
+RWTexture2D<float4> Result;
+float4 ColorOverlayA;
+float4 ColorOverlayB;
+
+float screenWidth;
+float screenHeight;
+
+[numthreads(8,8,1)]
+void CSScreenHorizontalColorOverlay(uint3 id : SV_DispatchThreadID)
+{
+    float tintVal = saturate(id.x / screenWidth);
+    float4 tintColor = lerp(ColorOverlayA, ColorOverlayB, tintVal);
+    
+    Result[id.xy] = SrcTexture[id.xy] * tintColor;
+}
+
+[numthreads(8, 8, 1)]
+void CSScreenVerticalColorOverlay(uint3 id : SV_DispatchThreadID)
+{
+    float tintVal = saturate(id.y / screenHeight);
+    float4 tintColor = lerp(ColorOverlayA, ColorOverlayB, tintVal);
+    
+    Result[id.xy] = SrcTexture[id.xy] * tintColor;
+}
+
+[numthreads(8, 8, 1)]
+void CSScreenDiagonalColorOverlay(uint3 id : SV_DispatchThreadID)
+{
+    float x = saturate(id.x / screenWidth);
+    float y = saturate(id.y / screenHeight);
+
+    float4 tintColor = lerp(ColorOverlayA, ColorOverlayB, x * y);
+
+    Result[id.xy] = SrcTexture[id.xy] * tintColor;
+}
+
+
+float RadialScale;
+
+float GetMask(int2 maskPos, int2 pixelPos, float maskRadius)
+{
+    float2 maskVec = (float2) maskPos - (float2) pixelPos;
+    return smoothstep(0, maskRadius, maskRadius - length(maskVec));
+}
+
+[numthreads(8, 8, 1)]
+void CSScreenRadialColorOverlay(uint3 id : SV_DispatchThreadID)
+{
+    int2 center = int2(screenWidth / 2, screenHeight / 2);
+    float radialMask = GetMask(center, id.xy, RadialScale);
+    
+    float4 tintColor = lerp(ColorOverlayA, ColorOverlayB, radialMask);
+
+    Result[id.xy] = SrcTexture[id.xy] * tintColor;
+}
